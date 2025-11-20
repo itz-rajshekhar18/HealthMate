@@ -1,25 +1,63 @@
 import { Stack } from "expo-router";
-import "./globals.css"
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { Platform } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+import "./globals.css";
+
+// Prevent the splash screen from auto-hiding before asset loading is complete
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Hide splash screen after component mounts
+    const hideSplashScreen = async () => {
+      await SplashScreen.hideAsync();
+    };
+    
+    hideSplashScreen();
+  }, []);
+
   return (
-    <Stack>
-      <Stack.Screen
-        name="index"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="(login)"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="(dashboard)"
-        options={{headerShown: false}}
-      />
-      <Stack.Screen 
-        name="(tabs)"
-        options={{headerShown: false}}
-      />
-    </Stack>
+    <>
+      <StatusBar style="auto" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
+          gestureEnabled: true,
+        }}
+      >
+        <Stack.Screen
+          name="index"
+          options={{ 
+            headerShown: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="(login)"
+          options={{ 
+            headerShown: false,
+            presentation: 'modal',
+            gestureEnabled: true,
+          }}
+        />
+        <Stack.Screen 
+          name="(dashboard)"
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen 
+          name="(tabs)"
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
+          }}
+        />
+      </Stack>
+    </>
   );
 }
