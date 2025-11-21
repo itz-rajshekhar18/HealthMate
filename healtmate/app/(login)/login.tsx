@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
-import { signIn, signInWithGoogle } from './auth';
+import { signIn, signInWithGoogle } from '../../services/authService';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');

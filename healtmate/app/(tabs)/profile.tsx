@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { signOut } from '../(login)/auth';
+import { signOut } from '../../services/authService';
 
 export default function ProfileScreen() {
   const handleSignOut = async () => {

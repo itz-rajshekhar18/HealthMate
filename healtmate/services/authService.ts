@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { auth, googleProvider } from "../../FirebaseConfig";
+import { auth, googleProvider } from "../FirebaseConfig";
 import { 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 

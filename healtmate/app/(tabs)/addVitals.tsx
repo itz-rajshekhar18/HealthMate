@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { createVital } from '../../services/vitalsService';
 
 export default function AddVitalsScreen() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function AddVitalsScreen() {
     setVitals(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSaveVitals = () => {
+  const handleSaveVitals = async () => {
     // Validate inputs
     const requiredFields = ['systolic', 'diastolic', 'heartRate', 'spO2', 'temperature'];
     const missingFields = requiredFields.filter(field => !vitals[field as keyof typeof vitals].trim());
@@ -29,14 +30,22 @@ export default function AddVitalsScreen() {
       return;
     }
 
-    // Show success message
-    setShowSuccess(true);
-    
-    // Hide success message and navigate to dashboard after 2 seconds
-    setTimeout(() => {
-      setShowSuccess(false);
-      router.replace('/(dashboard)');
-    }, 2000);
+    try {
+      // Save vitals to Firestore
+      await createVital(vitals);
+      
+      // Show success message
+      setShowSuccess(true);
+      
+      // Hide success message and navigate to dashboard after 2 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+        router.replace('/(dashboard)');
+      }, 2000);
+    } catch (error) {
+      console.error('Error saving vitals:', error);
+      Alert.alert('Error', 'Failed to save vitals. Please try again.');
+    }
   };
 
   return (
