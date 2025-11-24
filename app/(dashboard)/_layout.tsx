@@ -7,16 +7,7 @@ export default function DashboardLayout() {
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <Stack
         screenOptions={{
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#FFFFFF',
-          },
-          headerTintColor: '#1F2937',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-            fontSize: 18,
-          },
-          headerShadowVisible: true,
+          headerShown: false,
           animation: 'slide_from_right',
         }}
       >
@@ -28,22 +19,43 @@ export default function DashboardLayout() {
           }}
         />
         <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             title: 'Settings',
             presentation: 'modal',
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#FFFFFF',
+            },
+            headerTintColor: '#1F2937',
           }}
         />
         <Stack.Screen
           name="notifications"
           options={{
             title: 'Notifications',
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#FFFFFF',
+            },
+            headerTintColor: '#1F2937',
           }}
         />
         <Stack.Screen
           name="reports"
           options={{
             title: 'Health Reports',
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#FFFFFF',
+            },
+            headerTintColor: '#1F2937',
           }}
         />
       </Stack>

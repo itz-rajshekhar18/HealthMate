@@ -7,7 +7,11 @@ export default function DashboardScreen() {
   const router = useRouter();
 
   const handleAddVitals = () => {
-    router.push('/(tabs)/addVitals');
+    router.push('/(dashboard)/(tabs)/addVitals');
+  };
+
+  const handleChartsInsights = () => {
+    router.push('/(dashboard)/(tabs)/chart');
   };
 
   return (
@@ -72,7 +76,7 @@ export default function DashboardScreen() {
             <Text style={styles.secondaryButtonText}>View History</Text>
           </TouchableOpacity>
           <View style={styles.actionGrid}>
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity style={styles.actionCard} onPress={handleChartsInsights}>
               <Ionicons name="trending-up" size={24} color="#10B981" />
               <Text style={styles.actionLabel}>Charts & Insights</Text>
             </TouchableOpacity>

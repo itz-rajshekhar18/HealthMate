@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { createVital } from '../../services/vitalsService';
+import { createVital } from '../../../services/vitalsService';
 
 export default function AddVitalsScreen() {
   const router = useRouter();

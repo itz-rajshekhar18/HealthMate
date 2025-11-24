@@ -93,20 +93,41 @@ export const readAllVitals = async (): Promise<Vital[]> => {
     }
 
     const vitalsRef = collection(db, 'users', userId, 'vitals');
-    const q = query(vitalsRef, orderBy('timestamp', 'desc'));
     
-    const querySnapshot = await getDocs(q);
-    const vitals: Vital[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      vitals.push({
-        id: doc.id,
-        ...doc.data() as Vital,
+    // Try with orderBy, if it fails, fetch without ordering
+    try {
+      const q = query(vitalsRef, orderBy('timestamp', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const vitals: Vital[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        vitals.push({
+          id: doc.id,
+          ...doc.data() as Vital,
+        });
       });
-    });
 
-    console.log('✅ Fetched all vitals:', vitals.length);
-    return vitals;
+      console.log('✅ Fetched all vitals:', vitals.length);
+      return vitals;
+    } catch (orderError) {
+      // If orderBy fails, fetch all and sort in memory
+      console.log('⚠️ OrderBy failed, fetching without order...');
+      const querySnapshot = await getDocs(vitalsRef);
+      const vitals: Vital[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        vitals.push({
+          id: doc.id,
+          ...doc.data() as Vital,
+        });
+      });
+
+      // Sort in memory
+      vitals.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
+
+      console.log('✅ Fetched all vitals (sorted in memory):', vitals.length);
+      return vitals;
+    }
   } catch (error) {
     console.error('❌ Error fetching all vitals:', error);
     throw error;
@@ -223,20 +244,22 @@ export const readVitalsByEmail = async (email: string): Promise<Vital[]> => {
     }
 
     const vitalsRef = collection(db, 'users', userId, 'vitals');
-    const q = query(
-      vitalsRef,
-      where('email', '==', email),
-      orderBy('timestamp', 'desc')
-    );
+    // Remove the where clause since we're already filtering by userId
+    // All vitals under this userId belong to this user anyway
+    const q = query(vitalsRef, orderBy('timestamp', 'desc'));
 
     const querySnapshot = await getDocs(q);
     const vitals: Vital[] = [];
 
     querySnapshot.forEach((doc) => {
-      vitals.push({
-        id: doc.id,
-        ...doc.data() as Vital,
-      });
+      const vitalData = doc.data() as Vital;
+      // Filter by email in memory if needed (though it should match)
+      if (vitalData.email === email) {
+        vitals.push({
+          id: doc.id,
+          ...vitalData,
+        });
+      }
     });
 
     console.log(`✅ Fetched vitals for email ${email}:`, vitals.length);
