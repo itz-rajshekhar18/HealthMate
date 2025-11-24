@@ -97,13 +97,13 @@ Screens available in the design prototype:
 
 ## Getting Started
 
+> **Note:** To view the latest code, go to the `master` branch of this repository.
+
 1. Clone the repo:  
    ```bash
    git clone https://github.com/itz-rajshekhar18/HealthMate.git
    ```
 2. Install dependencies and run the project as per the instructions in your preferred environment.
-
----
 
 ## License
 
