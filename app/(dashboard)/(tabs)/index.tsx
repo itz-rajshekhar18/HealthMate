@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { calculateAverageVitals, readAllVitals, Vital } from '../../../services/vitalsService';
 import { Activity, getRecentActivities, getActivityStyle, formatActivityTime } from '../../../services/activityService';
 import { auth } from '../../../FirebaseConfig';

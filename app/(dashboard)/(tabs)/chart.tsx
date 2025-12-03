@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system/next';
 import * as Sharing from 'expo-sharing';
 import { Vital, calculateAverageVitals } from '../../../services/vitalsService';
 import { 
@@ -252,8 +253,10 @@ export default function ChartsScreen() {
         Alert.alert('Success', 'Analytics report downloaded successfully!');
       } else {
         const fileName = `HealthMate_Analytics_${new Date().getTime()}.html`;
-        const filePath = `${(FileSystem as any).documentDirectory || ''}${fileName}`;
-        await (FileSystem as any).writeAsStringAsync(filePath, htmlContent);
+        const file = new File(Paths.cache, fileName);
+        file.create();
+        file.write(htmlContent);
+        const filePath = file.uri;
         
         const canShare = await Sharing.isAvailableAsync();
         if (canShare) {

@@ -128,25 +128,17 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Sign In Button */}
-          <TouchableOpacity 
-            style={styles.googleButton} 
-            activeOpacity={0.8}
-            onPress={handleGoogleSignIn}
-            disabled={loading}
-          >
-            <Ionicons name="logo-google" size={20} color="#4285F4" style={styles.googleIcon} />
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {/* Web Platform Info */}
+          {/* Google Sign In Button - Only show on web */}
           {Platform.OS === 'web' && (
-            <View style={styles.webMessage}>
-              <Ionicons name="information-circle" size={16} color="#6B7280" />
-              <Text style={styles.webMessageText}>
-                Note: Google Sign-In works best on mobile devices
-              </Text>
-            </View>
+            <TouchableOpacity 
+              style={styles.googleButton} 
+              activeOpacity={0.8}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+            >
+              <Ionicons name="logo-google" size={20} color="#4285F4" style={styles.googleIcon} />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
           )}
 
           {/* Forgot Password Link */}

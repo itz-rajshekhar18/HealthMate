@@ -1,22 +1,7 @@
-import * as Notifications from 'expo-notifications';
 import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const REMINDER_STORAGE_KEY = '@healthmate_reminders';
-const isWeb = Platform.OS === 'web';
-
-// Configure notification behavior (only on native)
-if (!isWeb) {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-}
 
 export interface HealthReminder {
   id: string;
@@ -29,118 +14,25 @@ export interface HealthReminder {
   days: number[]; // 1-7 (Sunday = 1)
 }
 
-// Request notification permissions
+// Request notification permissions (simplified - just returns true)
 export async function requestNotificationPermissions(): Promise<boolean> {
-  if (isWeb) {
-    console.log('Notifications not fully supported on web');
-    return true; // Return true to allow UI to work
-  }
-
-  try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('Notification permissions not granted');
-      return false;
-    }
-
-    // Android requires a notification channel
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('health-reminders', {
-        name: 'Health Reminders',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#4A90D9',
-      });
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error requesting notification permissions:', error);
-    return false;
-  }
+  return true;
 }
 
-
-// Schedule a daily reminder
+// Schedule a reminder (stores locally, actual notifications need dev build)
 export async function scheduleReminder(reminder: HealthReminder): Promise<string[]> {
-  const notificationIds: string[] = [];
-
-  if (isWeb) {
-    console.log('Scheduling reminders not supported on web');
-    return notificationIds;
-  }
-
-  try {
-    // Cancel existing notifications for this reminder
-    await cancelReminder(reminder.id);
-
-    if (!reminder.enabled) {
-      return notificationIds;
-    }
-
-    // Schedule for each selected day
-    for (const day of reminder.days) {
-      const trigger: Notifications.WeeklyTriggerInput = {
-        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: day,
-        hour: reminder.hour,
-        minute: reminder.minute,
-      };
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: reminder.title,
-          body: reminder.body,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-          data: { reminderId: reminder.id, type: reminder.type },
-        },
-        trigger,
-      });
-
-      notificationIds.push(notificationId);
-    }
-
-    return notificationIds;
-  } catch (error) {
-    console.error('Error scheduling reminder:', error);
-    return notificationIds;
-  }
+  // Just save the reminder - actual push notifications need a development build
+  return [];
 }
 
 // Cancel a specific reminder
 export async function cancelReminder(reminderId: string): Promise<void> {
-  if (isWeb) return;
-
-  try {
-    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-    
-    for (const notification of scheduledNotifications) {
-      if (notification.content.data?.reminderId === reminderId) {
-        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-      }
-    }
-  } catch (error) {
-    console.error('Error canceling reminder:', error);
-  }
+  // No-op for now
 }
 
 // Cancel all reminders
 export async function cancelAllReminders(): Promise<void> {
-  if (isWeb) return;
-
-  try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-  } catch (error) {
-    console.error('Error canceling all reminders:', error);
-  }
+  // No-op for now
 }
 
 // Save reminders to storage
@@ -162,7 +54,6 @@ export async function loadReminders(): Promise<HealthReminder[]> {
     return getDefaultReminders();
   }
 }
-
 
 // Get default reminders
 export function getDefaultReminders(): HealthReminder[] {
@@ -212,51 +103,19 @@ export function getDefaultReminders(): HealthReminder[] {
 
 // Schedule all enabled reminders
 export async function scheduleAllReminders(reminders: HealthReminder[]): Promise<void> {
-  if (isWeb) return;
-
-  for (const reminder of reminders) {
-    if (reminder.enabled) {
-      await scheduleReminder(reminder);
-    }
-  }
+  // No-op - reminders are saved but push notifications need dev build
 }
 
-// Send an immediate test notification
+// Send a test notification
 export async function sendTestNotification(): Promise<void> {
-  if (isWeb) {
-    Alert.alert(
-      'Web Platform',
-      'Push notifications are not supported on web. Please use the mobile app for full notification support.',
-      [{ text: 'OK' }]
-    );
-    return;
-  }
-
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '✅ HealthMate Notifications Working!',
-        body: 'You will receive health reminders at your scheduled times.',
-        sound: true,
-      },
-      trigger: null,
-    });
-  } catch (error) {
-    console.error('Error sending test notification:', error);
-  }
+  Alert.alert(
+    'Reminders Saved',
+    'Your reminder settings have been saved. Push notifications require a development build to work on mobile devices.',
+    [{ text: 'OK' }]
+  );
 }
 
 // Get notification permission status
 export async function getNotificationPermissionStatus(): Promise<string> {
-  if (isWeb) {
-    return 'granted'; // Allow UI to work on web
-  }
-
-  try {
-    const { status } = await Notifications.getPermissionsAsync();
-    return status;
-  } catch (error) {
-    console.error('Error getting permission status:', error);
-    return 'undetermined';
-  }
+  return 'granted';
 }

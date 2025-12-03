@@ -1,5 +1,6 @@
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system/next';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 import { Vital, calculateAverageVitals } from './vitalsService';
 import { generateHealthInsights } from './chartService';
 import { auth } from '../FirebaseConfig';
@@ -352,7 +353,7 @@ export const generateAndSharePDF = async (vitals: Vital[], dateRange: number): P
     const htmlContent = generatePDFHTML(vitals, dateRange);
 
     // For web platform, download as HTML
-    if (typeof window !== 'undefined') {
+    if (Platform.OS === 'web') {
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -366,13 +367,12 @@ export const generateAndSharePDF = async (vitals: Vital[], dateRange: number): P
       return;
     }
 
-    // For mobile, create PDF using print API
+    // For mobile, save and share file using new expo-file-system API
     const fileName = `HealthMate_Report_${new Date().getTime()}.html`;
-    const filePath = `${(FileSystem as any).documentDirectory || ''}${fileName}`;
-    
-    await FileSystem.writeAsStringAsync(filePath, htmlContent, {
-      encoding: 'utf8' as any,
-    });
+    const file = new File(Paths.cache, fileName);
+    file.create();
+    file.write(htmlContent);
+    const filePath = file.uri;
 
     // Share the file
     const canShare = await Sharing.isAvailableAsync();

@@ -17,14 +17,18 @@ WebBrowser.maybeCompleteAuthSession();
 let GoogleSignin: any = null;
 let isGoogleSignInAvailable = false;
 
+// Only try to load on native platforms, and catch all errors silently
 if (Platform.OS !== 'web') {
     try {
+        // This will fail in Expo Go - that's expected
         const GoogleSignInModule = require('@react-native-google-signin/google-signin');
-        GoogleSignin = GoogleSignInModule.GoogleSignin;
-        isGoogleSignInAvailable = true;
-        console.log('✅ Google Sign-In module loaded successfully');
-    } catch (error) {
-        console.error('❌ Failed to load Google Sign-In module:', error);
+        GoogleSignin = GoogleSignInModule?.GoogleSignin;
+        isGoogleSignInAvailable = !!GoogleSignin;
+        if (isGoogleSignInAvailable) {
+            console.log('✅ Google Sign-In module loaded');
+        }
+    } catch {
+        // Silent fail - expected in Expo Go
         isGoogleSignInAvailable = false;
     }
 } else {
