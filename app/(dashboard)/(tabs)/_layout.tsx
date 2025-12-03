@@ -5,10 +5,6 @@ import { Platform } from 'react-native';
 export default function TabsLayout() {
   const router = useRouter();
 
-  const handleHomePress = () => {
-    router.replace('/(dashboard)');
-  };
-
   return (
     <Tabs
       screenOptions={{
@@ -44,8 +40,17 @@ export default function TabsLayout() {
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            handleHomePress();
+            router.replace('/(dashboard)');
           },
+        }}
+      />
+      <Tabs.Screen
+        name="chart"
+        options={{
+          title: 'Analytics',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="stats-chart" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -53,26 +58,33 @@ export default function TabsLayout() {
         options={{
           title: 'Add Vitals',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle" size={size} color={color} />
+            <Ionicons name="calendar" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="chart"
+        name="export"
         options={{
-          title: 'Charts',
+          title: 'Export',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart" size={size} color={color} />
+            <Ionicons name="document-text" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="health"
+        name="reminders"
         options={{
-          title: 'Health',
+          title: 'Reminders',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart" size={size} color={color} />
+            <Ionicons name="notifications" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null, // Hidden from tab bar, accessible via navigation
+          title: 'History',
         }}
       />
       <Tabs.Screen

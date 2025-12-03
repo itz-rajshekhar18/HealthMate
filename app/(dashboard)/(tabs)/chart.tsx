@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
-import { Vital } from '../../../services/vitalsService';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Vital, calculateAverageVitals } from '../../../services/vitalsService';
 import { 
   fetchCurrentUserVitals,
   filterVitalsByDateRange,
@@ -14,6 +16,7 @@ import {
   getChartSubtitle,
   VitalType
 } from '../../../services/chartService';
+import { logActivity } from '../../../services/activityService';
 import { auth } from '../../../FirebaseConfig';
 
 const screenWidth = Dimensions.get('window').width;
@@ -48,6 +51,224 @@ export default function ChartsScreen() {
       alert(`Failed to load vitals: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exportCharts = async () => {
+    if (vitals.length === 0) {
+      Alert.alert('No Data', 'No vitals data available to export.');
+      return;
+    }
+
+    try {
+      const userName = auth.currentUser?.displayName || userEmail.split('@')[0];
+      const reportDate = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', month: 'long', day: 'numeric' 
+      });
+      const averages = calculateAverageVitals(vitals);
+      const insights = generateHealthInsights(vitals);
+      const recommendations = generateRecommendations(vitals);
+
+      // Generate chart data for all vital types
+      const bpData = prepareChartData(vitals, 'bloodPressure', 7);
+      const hrData = prepareChartData(vitals, 'heartRate', 7);
+      const spo2Data = prepareChartData(vitals, 'spO2', 7);
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Health Analytics Report</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1F2937; }
+            .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #4F46E5; }
+            h1 { font-size: 28px; color: #1F2937; margin-bottom: 8px; }
+            .subtitle { font-size: 16px; color: #6B7280; }
+            .info-bar { display: flex; justify-content: space-between; background: #F9FAFB; padding: 16px; border-radius: 12px; margin-bottom: 30px; }
+            .info-item { text-align: center; }
+            .info-label { font-size: 12px; color: #6B7280; }
+            .info-value { font-size: 16px; font-weight: 600; color: #1F2937; }
+            .section { margin-bottom: 30px; }
+            .section-title { font-size: 20px; font-weight: bold; color: #1F2937; margin-bottom: 16px; border-bottom: 2px solid #E5E7EB; padding-bottom: 8px; }
+            .vitals-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+            .vital-card { background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px; text-align: center; }
+            .vital-label { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+            .vital-value { font-size: 24px; font-weight: bold; color: #1F2937; }
+            .vital-unit { font-size: 12px; color: #6B7280; }
+            .chart-section { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+            .chart-title { font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 12px; }
+            .chart-data { display: flex; flex-wrap: wrap; gap: 8px; }
+            .data-point { background: #EEF2FF; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+            .insight-card { background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+            .insight-title { font-weight: 600; color: #1F2937; margin-bottom: 4px; }
+            .insight-message { font-size: 14px; color: #6B7280; }
+            .recommendation { padding: 8px 0; border-bottom: 1px solid #F3F4F6; }
+            .recommendation:last-child { border-bottom: none; }
+            .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #E5E7EB; font-size: 12px; color: #9CA3AF; }
+            .trend-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            .trend-table th, .trend-table td { padding: 12px; text-align: left; border-bottom: 1px solid #E5E7EB; }
+            .trend-table th { background: #F9FAFB; font-weight: 600; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📊 Health Analytics Report</h1>
+            <div class="subtitle">Comprehensive Health Trends & Insights</div>
+          </div>
+
+          <div class="info-bar">
+            <div class="info-item">
+              <div class="info-label">Patient</div>
+              <div class="info-value">${userName}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Report Date</div>
+              <div class="info-value">${reportDate}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Period</div>
+              <div class="info-value">Last ${dateRange} Days</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Records</div>
+              <div class="info-value">${vitals.length}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Average Vitals Summary</h2>
+            <div class="vitals-grid">
+              <div class="vital-card">
+                <div class="vital-label">Blood Pressure</div>
+                <div class="vital-value">${averages?.bloodPressure.systolic || '--'}/${averages?.bloodPressure.diastolic || '--'}</div>
+                <div class="vital-unit">mmHg</div>
+              </div>
+              <div class="vital-card">
+                <div class="vital-label">Heart Rate</div>
+                <div class="vital-value">${averages?.heartRate || '--'}</div>
+                <div class="vital-unit">BPM</div>
+              </div>
+              <div class="vital-card">
+                <div class="vital-label">SpO₂</div>
+                <div class="vital-value">${averages?.spO2 || '--'}%</div>
+                <div class="vital-unit">Oxygen</div>
+              </div>
+              <div class="vital-card">
+                <div class="vital-label">Temperature</div>
+                <div class="vital-value">${averages?.temperature || '--'}°F</div>
+                <div class="vital-unit">Fahrenheit</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Trend Data</h2>
+            <div class="chart-section">
+              <div class="chart-title">Blood Pressure Readings</div>
+              <div class="chart-data">
+                ${bpData.labels.map((label, i) => `<span class="data-point">${label}: ${bpData.datasets[0].data[i]} mmHg</span>`).join('')}
+              </div>
+            </div>
+            <div class="chart-section">
+              <div class="chart-title">Heart Rate Readings</div>
+              <div class="chart-data">
+                ${hrData.labels.map((label, i) => `<span class="data-point">${label}: ${hrData.datasets[0].data[i]} BPM</span>`).join('')}
+              </div>
+            </div>
+            <div class="chart-section">
+              <div class="chart-title">SpO₂ Readings</div>
+              <div class="chart-data">
+                ${spo2Data.labels.map((label, i) => `<span class="data-point">${label}: ${spo2Data.datasets[0].data[i]}%</span>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Health Insights</h2>
+            ${insights.map(insight => `
+              <div class="insight-card">
+                <div class="insight-title">${insight.title}</div>
+                <div class="insight-message">${insight.message}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Recommendations</h2>
+            ${recommendations.map(rec => `<div class="recommendation">• ${rec}</div>`).join('')}
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Detailed Records</h2>
+            <table class="trend-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Blood Pressure</th>
+                  <th>Heart Rate</th>
+                  <th>SpO₂</th>
+                  <th>Temperature</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${vitals.slice(0, 15).map(vital => {
+                  const date = vital.timestamp?.toDate?.() || new Date(vital.timestamp as any);
+                  return `
+                    <tr>
+                      <td>${date.toLocaleDateString()}</td>
+                      <td>${vital.bloodPressure.systolic}/${vital.bloodPressure.diastolic} mmHg</td>
+                      <td>${vital.heartRate} BPM</td>
+                      <td>${vital.spO2}%</td>
+                      <td>${vital.temperature}°F</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="footer">
+            Generated by HealthMate Analytics • ${reportDate}<br>
+            For: ${userEmail}
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Export based on platform
+      if (Platform.OS === 'web') {
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `HealthMate_Analytics_${new Date().getTime()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        await logActivity('chart_exported', `Analytics chart for last ${dateRange} days`);
+        Alert.alert('Success', 'Analytics report downloaded successfully!');
+      } else {
+        const fileName = `HealthMate_Analytics_${new Date().getTime()}.html`;
+        const filePath = `${(FileSystem as any).documentDirectory || ''}${fileName}`;
+        await (FileSystem as any).writeAsStringAsync(filePath, htmlContent);
+        
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(filePath, {
+            mimeType: 'text/html',
+            dialogTitle: 'Share Analytics Report',
+          });
+        } else {
+          Alert.alert('Success', 'Report saved to: ' + filePath);
+        }
+        await logActivity('chart_exported', `Analytics chart for last ${dateRange} days`);
+      }
+    } catch (error: any) {
+      console.error('Export error:', error);
+      Alert.alert('Error', 'Failed to export charts: ' + error.message);
     }
   };
 
@@ -218,7 +439,7 @@ export default function ChartsScreen() {
         )}
 
         {/* Export Button */}
-        <TouchableOpacity style={styles.exportButton}>
+        <TouchableOpacity style={styles.exportButton} onPress={exportCharts}>
           <Ionicons name="download" size={20} color="#FFFFFF" />
           <Text style={styles.exportButtonText}>Export Charts</Text>
         </TouchableOpacity>

@@ -1,12 +1,8 @@
 {
-<<<<<<< HEAD
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "git.ignoreLimitWarning": true
 }
-=======
-    "git.ignoreLimitWarning": true
-}
->>>>>>> 242a51aadfd06950361b6c384c4d83e99dc83c17

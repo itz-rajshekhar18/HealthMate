@@ -15,12 +15,21 @@ WebBrowser.maybeCompleteAuthSession();
 
 // Conditionally import Google Sign-In for native platforms only
 let GoogleSignin: any = null;
+let isGoogleSignInAvailable = false;
+
 if (Platform.OS !== 'web') {
     try {
-        GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+        const GoogleSignInModule = require('@react-native-google-signin/google-signin');
+        GoogleSignin = GoogleSignInModule.GoogleSignin;
+        isGoogleSignInAvailable = true;
+        console.log('✅ Google Sign-In module loaded successfully');
     } catch (error) {
-        console.log('Google Sign-In not available on this platform');
+        console.error('❌ Failed to load Google Sign-In module:', error);
+        isGoogleSignInAvailable = false;
     }
+} else {
+    // Web platform uses different method
+    isGoogleSignInAvailable = true;
 }
 
 export const signIn = async (email: string, password: string) => {
@@ -49,11 +58,34 @@ export const signUp = async (email: string, password: string) => {
 
 // Configure Google Sign-In for native platforms
 export const configureGoogleSignIn = () => {
-    if (GoogleSignin && Platform.OS !== 'web') {
-        GoogleSignin.configure({
-            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-            offlineAccess: true,
+    if (!isGoogleSignInAvailable || !GoogleSignin || Platform.OS === 'web') {
+        console.log('⚠️ Skipping Google Sign-In configuration:', {
+            available: isGoogleSignInAvailable,
+            hasModule: !!GoogleSignin,
+            platform: Platform.OS
         });
+        return;
+    }
+    
+    try {
+        // Use platform-specific client ID if available, fallback to web client ID
+        const clientId = Platform.OS === 'ios' 
+            ? (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID)
+            : (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+            
+        console.log(`🔧 Configuring Google Sign-In for ${Platform.OS}`);
+        console.log('Using client ID:', clientId ? 'Found' : 'Missing');
+        
+        GoogleSignin.configure({
+            webClientId: clientId,
+            offlineAccess: true,
+            forceCodeForRefreshToken: true,
+            iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // iOS specific
+        });
+        
+        console.log('✅ Google Sign-In configured successfully');
+    } catch (error) {
+        console.error('❌ Failed to configure Google Sign-In:', error);
     }
 };
 
@@ -131,10 +163,15 @@ export const signInWithGoogle = async () => {
             }
         } else {
             // Native platforms - use react-native-google-signin
-            if (!GoogleSignin) {
-                alert('Google Sign-In is not available on this platform. Please use email/password authentication.');
+            if (!isGoogleSignInAvailable || !GoogleSignin) {
+                console.error('❌ Google Sign-In module not available');
+                console.error('Platform:', Platform.OS);
+                console.error('GoogleSignin object:', GoogleSignin);
+                alert('Google Sign-In is not configured for mobile yet. Please:\n\n1. Set up Firebase iOS/Android apps\n2. Add GoogleService files\n3. Rebuild the app\n\nFor now, please use email/password authentication.');
                 return;
             }
+
+            console.log('🔵 Starting Google Sign-In for', Platform.OS);
 
             // Configure Google Sign-In if not already configured
             configureGoogleSignIn();
@@ -142,32 +179,46 @@ export const signInWithGoogle = async () => {
             // Check if device supports Google Play (Android only)
             if (Platform.OS === 'android') {
                 try {
+                    console.log('Checking Google Play Services...');
                     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-                } catch (playServicesError) {
-                    alert('Google Play Services are required for Google Sign-In');
+                    console.log('✅ Google Play Services available');
+                } catch (playServicesError: any) {
+                    console.error('❌ Google Play Services error:', playServicesError);
+                    alert('Google Play Services are required for Google Sign-In. Please update Google Play Services and try again.');
                     return;
                 }
             }
             
             // Get the user's ID token
+            console.log('Opening Google Sign-In dialog...');
             const signInResult = await GoogleSignin.signIn();
-            console.log('Native Google Sign-In result:', signInResult);
+            console.log('✅ Google Sign-In completed:', {
+                hasIdToken: !!signInResult.data?.idToken || !!signInResult.idToken,
+                user: signInResult.data?.user?.email || signInResult.user?.email
+            });
             
-            const idToken = signInResult.data?.idToken || signInResult.idToken;
+            // Try multiple ways to get the ID token (different versions return different structures)
+            const idToken = signInResult.data?.idToken || signInResult.idToken || signInResult.data?.user?.idToken;
             
             if (!idToken) {
-                throw new Error('Failed to get ID token from Google Sign-In');
+                console.error('❌ No ID token received from Google Sign-In');
+                console.error('Sign-in result structure:', JSON.stringify(signInResult, null, 2));
+                throw new Error('Failed to get ID token from Google Sign-In. Please try again.');
             }
             
+            console.log('Creating Firebase credential...');
             // Create a Google credential with the token
             const googleCredential = GoogleAuthProvider.credential(idToken);
             
+            console.log('Signing in to Firebase...');
             // Sign-in the user with the credential
             const userCredential = await signInWithCredential(auth, googleCredential);
             
             if (userCredential.user) {
-                console.log('Firebase authentication successful:', userCredential.user.email);
+                console.log('✅ Firebase authentication successful:', userCredential.user.email);
                 router.replace('/(dashboard)');
+            } else {
+                throw new Error('Firebase authentication failed');
             }
         }
     } catch (error: any) {
@@ -207,7 +258,7 @@ export const signOut = async () => {
             await GoogleSignin.signOut();
         }
         
-        router.replace('/(login)/login');
+        router.replace('../');
     } catch (error: any) {
         console.log('Sign Out Error:', error);
         alert(`Sign Out Failed: ${error.message}`);

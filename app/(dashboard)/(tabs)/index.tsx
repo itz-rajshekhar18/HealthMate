@@ -1,394 +1,369 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { calculateAverageVitals, readAllVitals, Vital } from '../../../services/vitalsService';
+import { Activity, getRecentActivities, getActivityStyle, formatActivityTime } from '../../../services/activityService';
+import { auth } from '../../../FirebaseConfig';
 
+export default function DashboardHomeScreen() {
+  const router = useRouter();
+  const [todayVitals, setTodayVitals] = React.useState<Vital | null>(null);
+  const [recentActivities, setRecentActivities] = React.useState<Activity[]>([]);
+  const [averageVitals, setAverageVitals] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [userName, setUserName] = React.useState<string>('User');
 
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
-export default function WelcomeScreen() {
+  React.useEffect(() => {
+    loadVitals();
+    // Get user info
+    const user = auth.currentUser;
+    if (user) {
+      // Use displayName if available, otherwise extract from email
+      if (user.displayName) {
+        setUserName(user.displayName);
+      } else if (user.email) {
+        // Extract name from email (before @)
+        const emailName = user.email.split('@')[0];
+        // Capitalize first letter
+        setUserName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
+      }
+    }
+  }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadVitals();
+    }, [])
+  );
+
+  const loadVitals = async () => {
+    try {
+      const vitals = await readAllVitals();
+      console.log('📊 Dashboard loaded vitals:', vitals.length);
+
+      if (vitals.length > 0) {
+        // Get the most recent vital (today's or latest)
+        setTodayVitals(vitals[0]);
+        
+        // Calculate average vitals from all vitals data
+        const avgData = calculateAverageVitals(vitals);
+        setAverageVitals(avgData);
+      } else {
+        setTodayVitals(null);
+        setAverageVitals(null);
+      }
+
+      // Load recent activities from activity service
+      const activities = await getRecentActivities(10);
+      setRecentActivities(activities);
+    } catch (error) {
+      console.error('Error loading vitals:', error);
+      setTodayVitals(null);
+      setAverageVitals(null);
+      setRecentActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddVitals = () => {
+    router.push('/(dashboard)/(tabs)/addVitals');
+  };
+
+  const handleChartsInsights = () => {
+    router.push('/(dashboard)/(tabs)/chart');
+  };
+
+  const handleExportPDF = () => {
+    router.push('/(dashboard)/(tabs)/export');
+  };
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header Section with Blue Background */}
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
-          {/* Logo/Icon */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="heart-outline" size={36} color="#4F46E5" />
+          <View style={styles.userInfo}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.greeting}>
+              <Text style={styles.greetingText}>{getGreeting()}</Text>
+              <Text style={styles.userNameText}>{userName}</Text>
             </View>
           </View>
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={() => router.push('/(dashboard)/(tabs)/reminders')}
+          >
+            <Ionicons name="notifications-outline" size={24} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
 
-          {/* Title */}
-          <Text style={styles.title}>HealthMate</Text>
-          <Text style={styles.subtitle}>Your Health, Simplified</Text>
-
-          {/* Stats and Graph Container */}
-          <View style={styles.statsGraphContainer}>
-            {/* Health Stats Card */}
-            <View id="FIRSTBOX" style={styles.statsCard}>
-              <View style={styles.statRow}>
-                <View style={[styles.dot, { backgroundColor: '#4F46E5' }]} />
-                <Text style={styles.statText}>120/80</Text>
-              </View>
-              <View style={styles.statRow}>
-                <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-                <Text style={styles.statText}>72 BPM</Text>
-              </View>
-              <View style={styles.statRow}>
-                <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
-                <Text style={styles.statText}>98% SpO2</Text>
-              </View>
+        {/* Today's Vitals */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Latest Vitals</Text>
+          <View style={styles.vitalsGrid}>
+            <View style={styles.vitalCard}>
+              <Ionicons name="heart" size={24} color="#EF4444" />
+              <Text style={styles.vitalLabel}>Blood Pressure</Text>
+              <Text style={styles.vitalValue}>
+                {todayVitals ? `${todayVitals.bloodPressure.systolic}/${todayVitals.bloodPressure.diastolic}` : '--/--'}
+              </Text>
+              <Text style={styles.vitalUnit}>mmHg</Text>
             </View>
-            
-            {/* Adjacent Graph */}
-            <View style={styles.graphContainer}>
-              <View style={styles.graphLine}>
-                {/* Curved line segments to create smooth wave */}
-                <View style={[styles.curvedSegment, { left: '5%', bottom: '60%', width: 25, height: 8, borderRadius: 4 }]} />
-                <View style={[styles.curvedSegment, { left: '20%', bottom: '70%', width: 30, height: 6, borderRadius: 3 }]} />
-                <View style={[styles.curvedSegment, { left: '35%', bottom: '50%', width: 25, height: 8, borderRadius: 4 }]} />
-                <View style={[styles.curvedSegment, { left: '50%', bottom: '40%', width: 28, height: 7, borderRadius: 3.5 }]} />
-                <View style={[styles.curvedSegment, { left: '65%', bottom: '30%', width: 22, height: 9, borderRadius: 4.5 }]} />
-                <View style={[styles.curvedSegment, { left: '80%', bottom: '55%', width: 20, height: 6, borderRadius: 3 }]} />
-                
-                {/* Additional smaller segments for smoother curve */}
-                <View style={[styles.curvedSegment, { left: '12%', bottom: '65%', width: 15, height: 4, borderRadius: 2 }]} />
-                <View style={[styles.curvedSegment, { left: '28%', bottom: '60%', width: 18, height: 5, borderRadius: 2.5 }]} />
-                <View style={[styles.curvedSegment, { left: '43%', bottom: '45%', width: 16, height: 6, borderRadius: 3 }]} />
-                <View style={[styles.curvedSegment, { left: '58%', bottom: '35%', width: 14, height: 5, borderRadius: 2.5 }]} />
-                <View style={[styles.curvedSegment, { left: '73%', bottom: '42%', width: 17, height: 4, borderRadius: 2 }]} />
-              </View>
+            <View style={styles.vitalCard}>
+              <Ionicons name="pulse" size={24} color="#F97316" />
+              <Text style={styles.vitalLabel}>Heart Rate</Text>
+              <Text style={styles.vitalValue}>
+                {todayVitals ? todayVitals.heartRate : '--'}
+              </Text>
+              <Text style={styles.vitalUnit}>bpm</Text>
+            </View>
+            <View style={styles.vitalCard}>
+              <Ionicons name="water" size={24} color="#3B82F6" />
+              <Text style={styles.vitalLabel}>SpO₂</Text>
+              <Text style={styles.vitalValue}>
+                {todayVitals ? `${todayVitals.spO2}%` : '--%'}
+              </Text>
+              <Text style={styles.vitalUnit}>Oxygen</Text>
+            </View>
+            <View style={styles.vitalCard}>
+              <Ionicons name="thermometer" size={24} color="#F59E0B" />
+              <Text style={styles.vitalLabel}>Temperature</Text>
+              <Text style={styles.vitalValue}>
+                {todayVitals ? `${todayVitals.temperature}°F` : '--°F'}
+              </Text>
+              <Text style={styles.vitalUnit}>Normal</Text>
             </View>
           </View>
         </View>
 
-        {/* Features Section */}
-        <View style={styles.featuresSection}>
-          {/* Track Your Health */}
-          <View style={styles.featureBox}>
-            <View style={styles.featureIconContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="heart-outline" size={24} color="#4F46E5" />
-              </View>
-            </View>
-            <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>Track Your Health</Text>
-              <Text style={styles.featureDescription}>
-                Monitor your vitals like blood pressure, heart rate, and oxygen levels with our comprehensive health tracking platform.
+        {/* Average Vitals */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Average Vitals</Text>
+          <View style={styles.vitalsGrid}>
+            <View style={[styles.vitalCard, styles.averageCard]}>
+              <Ionicons name="heart" size={24} color="#EF4444" />
+              <Text style={styles.vitalLabel}>Avg Blood Pressure</Text>
+              <Text style={styles.vitalValue}>
+                {averageVitals ? `${averageVitals.bloodPressure.systolic}/${averageVitals.bloodPressure.diastolic}` : '--/--'}
               </Text>
+              <Text style={styles.vitalUnit}>mmHg</Text>
             </View>
-          </View>
-
-          {/* Record Vitals */}
-          <View style={styles.featureBox}>
-            <View style={styles.featureIconContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#FEF2F2' }]}>
-                <Ionicons name="fitness-outline" size={24} color="#EF4444" />
-              </View>
-            </View>
-            <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>Record Vitals</Text>
-              <Text style={styles.featureDescription}>
-                Easily log blood pressure, heart rate, blood flow, temperature, and weight readings with our intuitive interface.
+            <View style={[styles.vitalCard, styles.averageCard]}>
+              <Ionicons name="pulse" size={24} color="#F97316" />
+              <Text style={styles.vitalLabel}>Avg Heart Rate</Text>
+              <Text style={styles.vitalValue}>
+                {averageVitals ? averageVitals.heartRate : '--'}
               </Text>
+              <Text style={styles.vitalUnit}>bpm</Text>
             </View>
-          </View>
-
-          {/* View History */}
-          <View style={styles.featureBox}>
-            <View style={styles.featureIconContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#FFF7ED' }]}>
-                <Ionicons name="time-outline" size={24} color="#F97316" />
-              </View>
-            </View>
-            <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>View History</Text>
-              <Text style={styles.featureDescription}>
-                Access your complete health history with detailed records organized by date and time.
+            <View style={[styles.vitalCard, styles.averageCard]}>
+              <Ionicons name="water" size={24} color="#3B82F6" />
+              <Text style={styles.vitalLabel}>Avg SpO₂</Text>
+              <Text style={styles.vitalValue}>
+                {averageVitals ? `${averageVitals.spO2}%` : '--%'}
               </Text>
+              <Text style={styles.vitalUnit}>Oxygen</Text>
             </View>
-          </View>
-
-          {/* Track Trends */}
-          <View style={styles.featureBox}>
-            <View style={styles.featureIconContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="trending-up-outline" size={24} color="#10B981" />
-              </View>
-            </View>
-            <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>Track Trends</Text>
-              <Text style={styles.featureDescription}>
-                Visualize your health data with graphs and charts to identify patterns and insights.
+            <View style={[styles.vitalCard, styles.averageCard]}>
+              <Ionicons name="thermometer" size={24} color="#F59E0B" />
+              <Text style={styles.vitalLabel}>Avg Temperature</Text>
+              <Text style={styles.vitalValue}>
+                {averageVitals ? `${averageVitals.temperature}°F` : '--°F'}
               </Text>
+              <Text style={styles.vitalUnit}>Normal</Text>
             </View>
           </View>
+        </View>
 
-          {/* Share Reports */}
-          <View style={styles.featureBox}>
-            <View style={styles.featureIconContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#FAF5FF' }]}>
-                <Ionicons name="share-social-outline" size={24} color="#A855F7" />
-              </View>
-            </View>
-            <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>Share Reports</Text>
-              <Text style={styles.featureDescription}>
-                Generate PDF reports and share your health data with doctors and family.
-              </Text>
-            </View>
-          </View>
-
-          {/* Why Choose VisualTracker */}
-          <View style={styles.whyChooseSection}>
-            <Text style={styles.sectionTitle}>Why Choose VisualTracker?</Text>
-            
-            <View style={styles.benefitsList}>
-              <View style={styles.benefitItem}>
-                <Text style={styles.benefitTitle}>Simple & Intuitive</Text>
-                <Text style={styles.benefitDescription}>User-friendly interface for effortless data entry.</Text>
-              </View>
-              
-              <View style={styles.benefitItem}>
-                <Text style={styles.benefitTitle}>Comprehensive Tracking</Text>
-                <Text style={styles.benefitDescription}>Monitor all essential health metrics in one place.</Text>
-              </View>
-              
-              <View style={styles.benefitItem}>
-                <Text style={styles.benefitTitle}>Smart Insights</Text>
-                <Text style={styles.benefitDescription}>Get personalized health tips and pattern analysis.</Text>
-              </View>
-              
-              <View style={styles.benefitItem}>
-                <Text style={styles.benefitTitle}>Healthcare Ready</Text>
-                <Text style={styles.benefitDescription}>Professional reports for doctor visits.</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Ready to Start */}
-          <View style={styles.ctaSection}>
-            <Text style={styles.ctaTitle}>Ready to Start?</Text>
-            <Text style={styles.ctaDescription}>
-              Begin your health journey today with HealthMate
-            </Text>
-            
-            {/* Get Started Button */}
-            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8}>
-              <Text style={styles.primaryButtonText}>Get Started</Text>
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleAddVitals}>
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Add Vitals</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.secondaryButton}
+            onPress={() => router.push('/(dashboard)/(tabs)/history')}
+          >
+            <Ionicons name="time-outline" size={20} color="#6B7280" />
+            <Text style={styles.secondaryButtonText}>View History</Text>
+          </TouchableOpacity>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={handleChartsInsights}>
+              <Ionicons name="trending-up" size={24} color="#10B981" />
+              <Text style={styles.actionLabel}>Charts & Insights</Text>
             </TouchableOpacity>
-
-            {/* Learn More Button */}
-            <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.7}>
-              <Text style={styles.secondaryButtonText}>Learn More</Text>
+            <TouchableOpacity style={styles.actionCard} onPress={handleExportPDF}>
+              <Ionicons name="document-text" size={24} color="#3B82F6" />
+              <Text style={styles.actionLabel}>Export PDF</Text>
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerTitle}>HealthMate</Text>
-            <View style={styles.footerLinks}>
-              <TouchableOpacity>
-                <Text style={styles.footerLink}>Privacy Policy</Text>
-              </TouchableOpacity>
-              <Text style={styles.footerSeparator}>•</Text>
-              <TouchableOpacity>
-                <Text style={styles.footerLink}>Terms of Service</Text>
-              </TouchableOpacity>
-              <Text style={styles.footerSeparator}>•</Text>
-              <TouchableOpacity>
-                <Text style={styles.footerLink}>Support</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Recent Activity */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <View style={styles.activityList}>
+            {recentActivities.length > 0 ? (
+              recentActivities.map((activity, index) => {
+                const style = getActivityStyle(activity.type);
+                return (
+                  <View key={activity.id || index} style={[styles.activityItem, index === recentActivities.length - 1 && { borderBottomWidth: 0 }]}>
+                    <View style={[styles.activityIcon, { backgroundColor: style.bgColor }]}>
+                      <Ionicons name={style.icon as any} size={16} color={style.color} />
+                    </View>
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityTitle}>{activity.title}</Text>
+                      {activity.description && (
+                        <Text style={styles.activityDescription}>{activity.description}</Text>
+                      )}
+                      <Text style={styles.activityTime}>{formatActivityTime(activity.timestamp)}</Text>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.activityItem}>
+                <View style={[styles.activityIcon, { backgroundColor: '#F3F4F6' }]}>
+                  <Ionicons name="information" size={16} color="#6B7280" />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>No recent activity</Text>
+                  <Text style={styles.activityTime}>Start by adding your vitals</Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
   },
-  scrollView: {
-    flex: 1,
+  content: {
+    padding: 20,
+    paddingBottom: 100,
   },
   header: {
-    backgroundColor: '#4F46E5',
-    paddingTop: 50,
-    paddingBottom: 32,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  statsGraphContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginHorizontal: 4,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
   },
-  statsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    flex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  statRow: {
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 16,
-  },
-  statText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
-  },
-  featuresSection: {
-    paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 16,
-  },
-  featureItem: {
-    marginBottom: 40,
-  },
-  featureBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  featureIconContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  featureTextContainer: {
-    alignItems: 'center',
-  },
-  featureTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 8,
-  },
-  iconContainer: {
-    alignItems: 'center',
-  },
-  iconCircle: {
+  avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: '#4F46E5',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  whyChooseSection: {
-    marginTop: 16,
-    marginBottom: 40,
+  greeting: {
+    flex: 1,
+  },
+  greetingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  userNameText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  section: {
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  benefitsList: {
-    paddingHorizontal: 8,
+  vitalsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  benefitItem: {
-    marginBottom: 20,
+  vitalCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  benefitTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
+  averageCard: {
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  vitalLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
     marginBottom: 4,
+    textAlign: 'center',
   },
-  benefitDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  ctaSection: {
-    marginTop: 16,
-    marginBottom: 32,
-  },
-  ctaTitle: {
-    fontSize: 20,
+  vitalValue: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
   },
-  ctaDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingHorizontal: 32,
-    marginBottom: 24,
+  vitalUnit: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#4F46E5',
+    borderRadius: 12,
     paddingVertical: 16,
-    borderRadius: 25,
-    marginHorizontal: 8,
     marginBottom: 12,
     shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 4 },
@@ -400,70 +375,86 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
+    marginLeft: 8,
   },
   secondaryButton: {
-    paddingVertical: 12,
-    marginHorizontal: 8,
-  },
-  secondaryButtonText: {
-    color: '#4F46E5',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  footerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  footerLinks: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  footerLink: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  footerSeparator: {
-    fontSize: 14,
-    color: '#D1D5DB',
-  },
-  graphContainer: {
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secondaryButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
-    flex: 1,
-    height: 140,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  actionLabel: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  activityList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 8,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  graphLine: {
-    flex: 1,
-    position: 'relative',
-  },
-  curvedSegment: {
-    position: 'absolute',
-    backgroundColor: '#4F46E5',
-    opacity: 0.8,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
     elevation: 2,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  activityIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  activityTime: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  activityDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 2,
   },
 });

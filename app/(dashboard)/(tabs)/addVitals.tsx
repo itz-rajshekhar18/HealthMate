@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableO
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { createVital } from '../../../services/vitalsService';
+import { logActivity } from '../../../services/activityService';
 
 export default function AddVitalsScreen() {
   const router = useRouter();
@@ -33,6 +34,9 @@ export default function AddVitalsScreen() {
     try {
       // Save vitals to Firestore
       await createVital(vitals);
+      
+      // Log activity
+      await logActivity('vital_recorded', `BP: ${vitals.systolic}/${vitals.diastolic}, HR: ${vitals.heartRate} BPM`);
       
       // Show success message
       setShowSuccess(true);
