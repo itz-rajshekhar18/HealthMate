@@ -2,9 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { signOut } from '../../../services/authService';
+import { auth } from '../../../FirebaseConfig';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const user = auth.currentUser;
+  const userName = user?.displayName || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email || 'Not signed in';
+
   const handleSignOut = async () => {
     await signOut();
   };
@@ -21,24 +28,33 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             <Ionicons name="person-circle" size={80} color="#4F46E5" />
           </View>
-          <Text style={styles.userName}>Welcome to HealthMate!</Text>
-          <Text style={styles.userEmail}>Manage your health profile</Text>
+          <Text style={styles.userName}>{userName}</Text>
+          <Text style={styles.userEmail}>{userEmail}</Text>
         </View>
 
         <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="settings-outline" size={24} color="#6B7280" />
-            <Text style={styles.menuText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/(dashboard)/(tabs)/reminders')}
+          >
             <Ionicons name="notifications-outline" size={24} color="#6B7280" />
-            <Text style={styles.menuText}>Notifications</Text>
+            <Text style={styles.menuText}>Reminders</Text>
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/(dashboard)/(tabs)/history')}
+          >
+            <Ionicons name="time-outline" size={24} color="#6B7280" />
+            <Text style={styles.menuText}>Vitals History</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/(dashboard)/(tabs)/help')}
+          >
             <Ionicons name="help-circle-outline" size={24} color="#6B7280" />
             <Text style={styles.menuText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />

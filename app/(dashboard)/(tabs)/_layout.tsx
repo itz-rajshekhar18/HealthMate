@@ -83,8 +83,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          href: null, // Hidden from tab bar, accessible via navigation
+          href: null,
           title: 'History',
+        }}
+      />
+      <Tabs.Screen
+        name="help"
+        options={{
+          href: null,
+          title: 'Help',
         }}
       />
       <Tabs.Screen
