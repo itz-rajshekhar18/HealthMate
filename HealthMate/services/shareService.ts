@@ -112,7 +112,7 @@ export const getSharedReport = async (reportId: string): Promise<SharedReport | 
 };
 
 // TODO: Replace with your actual deployed domain
-const APP_DOMAIN = 'https://healthmate-c2f60.web.app';
+const APP_DOMAIN = 'https://healthmates.onrender.com';
 
 /**
  * Generate shareable URL for a report
@@ -127,7 +127,7 @@ export const generateShareableURL = (reportId: string): string => {
     return `${window.location.origin}/shared-report/${reportId}`;
   }
   
-  return `https://healthmate-c2f60.web.app/shared-report/${reportId}`;
+  return `https://https://healthmates.onrender.com/shared-report/${reportId}`;
 };
 
 /**
