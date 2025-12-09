@@ -1,8 +1,8 @@
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Platform } from "react-native";
-import * as SplashScreen from "expo-splash-screen";
 import "./globals.css";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
@@ -32,6 +32,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="learnMore"
+          options={{ 
+            headerShown: false,
+            gestureEnabled: true,
+          }}
+        />
+        <Stack.Screen
           name="(login)"
           options={{ 
             headerShown: false,
@@ -41,13 +48,6 @@ export default function RootLayout() {
         />
         <Stack.Screen 
           name="(dashboard)"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen 
-          name="(tabs)"
           options={{
             headerShown: false,
             gestureEnabled: false,

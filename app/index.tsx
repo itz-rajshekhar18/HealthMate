@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { auth } from '../FirebaseConfig';
 
 
@@ -224,7 +224,11 @@ export default function WelcomeScreen() {
             </TouchableOpacity>
 
             {/* Learn More Button */}
-            <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.secondaryButton} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/learnMore')}
+            >
               <Text style={styles.secondaryButtonText}>Learn More</Text>
             </TouchableOpacity>
           </View>

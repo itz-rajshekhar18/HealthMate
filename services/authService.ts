@@ -1,14 +1,14 @@
+import * as AuthSession from 'expo-auth-session';
 import { router } from "expo-router";
-import { auth, googleProvider } from "../FirebaseConfig";
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
+import * as WebBrowser from 'expo-web-browser';
+import {
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
     signInWithCredential,
-    GoogleAuthProvider 
+    signInWithEmailAndPassword
 } from "firebase/auth";
 import { Platform } from "react-native";
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import { auth, googleProvider } from "../FirebaseConfig";
 
 // Complete the WebBrowser authentication session
 WebBrowser.maybeCompleteAuthSession();
@@ -254,15 +254,31 @@ export const signInWithGoogle = async () => {
 // Sign out function (including Google sign out)
 export const signOut = async () => {
     try {
+        // Sign out from Google first (native platforms only)
+        if (GoogleSignin && Platform.OS !== 'web') {
+            try {
+                await GoogleSignin.signOut();
+            } catch (e) {
+                // Ignore Google sign out errors
+            }
+        }
+        
         // Sign out from Firebase
         await auth.signOut();
         
-        // Sign out from Google (native platforms only)
-        if (GoogleSignin && Platform.OS !== 'web') {
-            await GoogleSignin.signOut();
+        // Navigate to welcome screen
+        if (Platform.OS === 'web') {
+            // For web, use window.location for a clean redirect
+            window.location.href = '/';
+        } else {
+            // For native, use router.dismissAll() to clear stack then replace
+            try {
+                router.dismissAll();
+            } catch (e) {
+                // Ignore if no screens to dismiss
+            }
+            router.replace('/');
         }
-        
-        router.replace('../');
     } catch (error: any) {
         console.log('Sign Out Error:', error);
         alert(`Sign Out Failed: ${error.message}`);
