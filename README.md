@@ -1,6 +1,6 @@
 # HealthMate
 
-HealthMate is a comprehensive health tracking application designed to log vital statistics, monitor health trends, and generate PDF summaries. This repository contains the complete source code, documentation, and design references for the HealthMate app.
+HealthMate is a comprehensive health tracking application designed to log vital statistics, monitor health trends, and generate PDF summaries. This repository contains the complete source code, documentation, and design references for the HealthMate app. For Codebase please switch to master branch
 
 ---
 
